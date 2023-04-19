@@ -1,0 +1,7 @@
+select a.name, b.value/1024/1023 MB
+from v$sysstat a, v$mystat b
+where a.statistic# = b.statistic# and
+(a.name in ('physical read total bytes',
+	    'physical write total bytes',
+'cell IO uncompressed bytes')
+or a.name like 'cell phy%');

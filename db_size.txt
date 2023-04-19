@@ -1,0 +1,9 @@
+set lines 333
+
+SELECT
+  (SELECT sum(bytes)/1024/1024/1024/1024 FROM dba_data_files) as "Physical Size (TB)",
+  (SELECT sum(bytes)/1024/1024/1024/1024 FROM dba_segments) as "Logical Size (TB)",
+  (SELECT sum(bytes)/1024/1024/1024 FROM dba_temp_files) as "Temp File Size (GB)",
+  (SELECT sum(bytes)/1024/1024/1024 FROM v$log) as "Redo Log Size (GB)",
+  (SELECT sum(block_size*file_size_blks)/1024/1024/1024 FROM v$controlfile) as "Control File Size (GB)"
+FROM dual;

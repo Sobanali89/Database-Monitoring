@@ -1,0 +1,3 @@
+set lines 333
+alter session set nls_date_format='yyyy-MON-dd hh24:mi:ss';
+select instance_name, STARTUP_TIME, host_name, archiver, thread#, status from gv$instance;

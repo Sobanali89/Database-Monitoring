@@ -1,0 +1,21 @@
+set lines 333
+SELECT to_char(sysdate,'mm/dd/yy hh24:mi') DATED, (select name from v$database) "Database", tablespace_name,
+ROUND(SUM(total_mb)/1024,2) "SIZE GB",
+ROUND((SUM(total_mb)-SUM(free_mb))/1024,2) "USED GB",
+ROUND((SUM(max_mb) - (SUM(total_mb)-SUM(free_mb)))/1024,2) "FREE GB",
+ROUND(((SUM(total_mb)-SUM(free_mb))/SUM(total_mb)*100),2) "% USED",
+ROUND((SUM(max_mb))/1024,2) "MAX GB", 
+ROUND((SUM(total_mb)-SUM(free_mb))/SUM(max_mb)*100,2) "% FULL"
+FROM (
+  SELECT tablespace_name, SUM(bytes)/1024/1024 FREE_MB,
+  0 TOTAL_MB, 0 MAX_MB
+  FROM dba_free_space
+  GROUP BY tablespace_name
+  UNION
+  SELECT tablespace_name, 0 CURRENT_MB,
+  SUM(bytes)/1024/1024 TOTAL_MB,
+  SUM(DECODE(maxbytes,0,bytes, maxbytes))/1024/1024 MAX_MB
+FROM dba_data_files
+  GROUP BY tablespace_name) where tablespace_name not in (select tablespace_name from DBA_TABLESPACES where BIGFILE='YES')
+GROUP BY tablespace_name 
+order by 9 desc;

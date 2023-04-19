@@ -1,0 +1,12 @@
+set lines 111
+COLUMN name FORMAT A30
+COLUMN "Space Limit (GB)" FORMAT 999,999,999
+COLUMN "Space Used (GB)" FORMAT 999,999,999
+COLUMN "Space Available (GB)" FORMAT 999,999,999
+
+SELECT
+  name,
+  ceil(space_limit / 1024 / 1024 / 1024) as "Space Limit (GB)",
+  ceil(space_used / 1024 / 1024 / 1024) as "Space Used (GB)",
+  ceil((space_limit - space_used) / 1024 / 1024 / 1024) as "Space Available (GB)"
+FROM v$recovery_file_dest;

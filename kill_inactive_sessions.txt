@@ -1,0 +1,5 @@
+SELECT 'alter system kill session '||''''||s.sid||','||s.serial#||''''||' immediate;'
+FROM v$session s, v$process p
+WHERE s.paddr = p.addr
+AND s.status!='ACTIVE'
+AND ROWNUM<1000;
