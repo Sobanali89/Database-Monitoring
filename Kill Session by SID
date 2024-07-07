@@ -1,0 +1,23 @@
+SELECT
+--    s.sid,
+--    s.serial#,
+--    p.spid,
+--    s.username,
+--    s.program,
+--    s.inst_id,
+--    'kill -9 ' || p.spid,
+    'ALTER SYSTEM KILL SESSION '
+    || ''''
+    || s.sid
+    || ','
+    || s.serial#
+    || ''''
+    || ' IMMEDIATE;'
+FROM
+         gv$session s
+    JOIN gv$process p ON p.addr = s.paddr
+                         AND p.inst_id = s.inst_id
+WHERE
+        s.type != 'BACKGROUND'
+    AND s.username NOT IN ( 'SYS', 'SYSTEM' )
+    AND s.sid = &sid;
