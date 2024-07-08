@@ -1,0 +1,301 @@
+-- |Get Target Details before dropping it
+
+-------------------------------------------------------------------------------------------------------
+
+SQL> show parameter listener
+
+NAME				     TYPE	 VALUE
+------------------------------------ ----------- ------------------------------
+forward_listener		     string
+listener_networks		     string
+local_listener			     string	 oraebsdbuat01.neoleap.com.sa:1
+						 531
+remote_listener 		     string	  oraebsscanuat:1525
+SQL> show parameter global
+
+SQL> show pdbs
+
+    CON_ID CON_NAME			  OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+	 2 PDB$SEED			  READ ONLY  NO
+	 4 EBSUAT			  READ WRITE NO
+
+======================================================================================================
+
+-- Set the Authentication First:
+
+[oraprod@oraebsdbprd01 <-->{~}:$ OracleRMANConfigTool --set-auth-data-for-restore
+Select authentication type or disable the functionality:
+0. To disable the functionality
+1. Credentials
+2. Recovery token
+Enter authentication type number:1
+Enter username: veeamsvc
+Enter password for veeamsvc: zCqK6#4t01hj
+The provided authentication data will be used to access backups via the SEND command.
+
+-- Check the Availble Backups:
+
+[oraprod@oraebsdbprd01 <-->{~}:$ OracleRMANConfigTool --get-backup-for-restore
+Select backup to be used:
+1. paygscanuat Oracle backup (SOBR)
+2. weodsdbscanpp Oracle backup (SOBR)
+3. wesbscanarc Oracle backup (SOBR)
+4. oraebsscanprd Oracle backup (SOBR)
+5. suntecuprdscan Oracle backup (SOBR)
+6. cmscscanuat Oracle backup (SOBR)
+7. wesbdbscanpp Oracle backup (SOBR)
+8. oraclewsit01 Oracle backup (SOBR)
+9. wesbdbscan Oracle backup (SOBR)
+10. paygscandev Oracle backup (SOBR)
+11. fraudscanuat Oracle backup (SOBR)
+12. orawscanprd Oracle backup (SOBR)
+13. oratfscanprd Oracle backup (SOBR)
+14. wnedbscanpp Oracle backup (SOBR)
+15. oraebsscanuat Oracle backup (SOBR)
+16. cmsppscanuat Oracle backup (SOBR)
+17. cortexscanprd Oracle backup (SOBR)
+18. wesbscanarcprd Oracle backup (SOBR)
+19. orawscanpp Oracle backup (SOBR)
+20. paygscansit Oracle backup (SOBR)
+21. weodsdbscan Oracle backup (SOBR)
+22. suntecuat04 Oracle backup (SOBR)
+23. oraidamsit01 Oracle backup (SOBR)
+24. arbscanprd Oracle backup (SOBR)
+25. cmscscanuat Oracle backup (SOBR)
+26. amlockuat02 Oracle backup (SOBR)
+27. cortexpdbuat01.neoleap.com.sa Oracle backup (SOBR)
+28. cortex-prd-scan Oracle backup (SOBR)
+29. wnedbscan Oracle backup (SOBR)
+30. localhost.localdomain Oracle backup (SOBR)
+31. oraebsdbsit01.neoleap.com.sa Oracle backup (SOBR)
+32. wesbdbscan Oracle backup (SOBR)
+33. copy job for RMAN\cortexscanprd Oracle backup (DB_SOBR)
+34. copy job for RMAN\oratfscanprd Oracle backup (DB_SOBR)
+35. copy job for RMAN\amlockprd02 Oracle backup (DB_SOBR)
+36. copy job for RMAN\dlpdb01 Oracle backup (DB_SOBR)
+37. copy job for RMAN\weodsdbscan Oracle backup (DB_SOBR)
+38. copy job for RMAN\oraebsdbsit01.neoleap.com.sa Oracle backup (DB_SOBR)
+39. copy job for RMAN\cmscscanuat Oracle backup (DB_SOBR)
+40. copy job for RMAN\sastdroradbprdscan Oracle backup (DB_SOBR)
+41. copy job for RMAN\wesbdbscanpp Oracle backup (DB_SOBR)
+42. copy job for RMAN\weodsdbscanpp Oracle backup (DB_SOBR)
+43. copy job for RMAN\wnedbscanpp Oracle backup (DB_SOBR)
+44. copy job for RMAN\oraebsscanprd Oracle backup (DB_SOBR)
+45. copy job for RMAN\wnedbscan Oracle backup (DB_SOBR)
+46. weodsdbscanpp Oracle backup (DB_SOBR)
+47. amlockprd02 Oracle backup (DB_SOBR)
+48. wesbscanarc Oracle backup (DB_SOBR)
+49. oraebsdbsit01.neoleap.com.sa Oracle backup (DB_SOBR)
+50. fraudscanuat Oracle backup (DB_SOBR)
+51. oratfscanprd Oracle backup (DB_SOBR)
+52. weodsdbscan Oracle backup (DB_SOBR)
+53. oraebsscanprd Oracle backup (DB_SOBR)
+54. paygscansit Oracle backup (DB_SOBR)
+55. amlockprd02.neoleap.com.sa Oracle backup (DB_SOBR)
+56. dlpdb01 Oracle backup (DB_SOBR)
+57. wesbdbscanpp Oracle backup (SOBR)
+58. wesbdbscanpp Oracle backup (DB_SOBR)
+59. orawscanprd Oracle backup (DB_SOBR)
+60. wnedbscanpp Oracle backup (DB_SOBR)
+61. wnedbscan Oracle backup (DB_SOBR)
+62. tokendbuat02 Oracle backup (DB_SOBR)
+63. dlpdb01.neoleap.com.sa Oracle backup (DB_SOBR)
+64. suntecuprdscan Oracle backup (DB_SOBR)
+65. cortexscanprd Oracle backup (DB_SOBR)
+66. cmscscanuat Oracle backup (DB_SOBR)
+67. sastdroradbprdscan Oracle backup (DB_SOBR)
+68. oraebsscanuat Oracle backup (DB_SOBR)
+69. paygscanuat Oracle backup (DB_SOBR)
+70. orawscanpp Oracle backup (DB_SOBR)
+71. wesbdbscan Oracle backup (DB_SOBR)
+72. weodsdbscan Oracle backup (SOBR2)
+73. cortexscanprd Oracle backup (SOBR)
+74. wesbscanarc Oracle backup (SOBR)
+75. cmscscanuat Oracle backup (SOBR)
+76. wnedbscanpp Oracle backup (SOBR)
+77. wnedbscan Oracle backup (SOBR)
+78. weodsdbscan Oracle backup (SOBR)
+79. oratfscanprd Oracle backup (SOBR)
+80. oraebsscanuat Oracle backup (SOBR)
+81. paygscansit Oracle backup (SOBR)
+82. oraebsdbsit01.neoleap.com.sa Oracle backup (SOBR)
+83. orawscanpp Oracle backup (SOBR)
+84. orawscanprd Oracle backup (SOBR)
+85. cmscscanuat Oracle backup (protect)
+86. wesbdbscan Oracle backup (SOBR)
+87. suntecuprdscan Oracle backup (SOBR)
+88. oraebsscanprd Oracle backup (SOBR)
+89. paygscanuat Oracle backup (SOBR)
+90. arbscanprd Oracle backup (SOBR)
+91. weodsdbscanpp Oracle backup (SOBR)
+92. wnedbscan Oracle backup (protect)
+93. wesbdbscanpp Oracle backup (SOBR)
+Enter backup number:88
+To perform restore operations, use ID of the selected backup from the example below as srcBackup parameter value in SEND command:
+ALLOCATE CHANNEL VeeamAgentChannel1 DEVICE TYPE SBT_TAPE
+PARMS 'SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so';
+SEND 'srcBackup=ee1d2a75-d3cc-4f80-b8c1-b28d3e1acf8d';
+[oraprod@oraebsdbprd01 <-->{~}:$ 
+
+-- Correct repository can be confirmed from the backup team if any confusion.
+-----------------------------------------------------
+Restore Pfile
+get pfile handle from prod backup logs
+-----------------------------------------------------
+-- 46 : 05264609-9ba1-47bb-9d1d-4925352819e1
+
+rman TARGET /
+RUN {
+ALLOCATE CHANNEL a1 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE 'SBT_TAPE' TO '%F_RMAN_AUTOBACKUP.vab';
+RESTORE spfile to pfile '/u02/soban/pfile.ora' FROM 'c-987685151-20240630-02_RMAN_AUTOBACKUP.vab';
+}
+EXIT;
+
+------------------------------------------------------
+Restore Control FILE
+------------------------------------------------------
+
+-- Control file handle from last full successfull BACKUP
+-- c-987685151-20240630-01_RMAN_AUTOBACKUP.vab
+-- SEND we will use the same as above
+
+rman TARGET /
+RUN {
+ALLOCATE CHANNEL a1 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+SET CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE 'SBT_TAPE' TO '%F_RMAN_AUTOBACKUP.vab';
+RESTORE controlfile  to '/u02/soban/controlfile.ctl' FROM 'c-987685151-20240630-01_RMAN_AUTOBACKUP.vab';
+}
+EXIT;
+
+
+[oracle@oraebsdbuat01 dbs]$ rman target /
+
+Recovery Manager: Release 19.0.0.0.0 - Production on Wed Jul 3 10:28:51 2024
+Version 19.11.0.0.0
+
+Copyright (c) 1982, 2019, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: EBSCDB (not mounted)
+
+RMAN> restore controlfile from '/u02/soban/controlfile.ctl';
+
+Starting restore at 03-JUL-24
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=138 instance=ebscdb1 device type=DISK
+
+channel ORA_DISK_1: copied control file copy
+output file name=+DATA/EBSCDB/CONTROLFILE/current.327.1173349787
+Finished restore at 03-JUL-24
+
+RMAN> alter database mount;
+
+released channel: ORA_DISK_1
+Statement processed
+
+RMAN> exit
+
+
+Recovery Manager complete.
+[oracle@oraebsdbuat01 dbs]$ sqlplus / as sysdba
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jul 3 10:30:12 2024
+Version 19.11.0.0.0
+
+Copyright (c) 1982, 2020, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.11.0.0.0
+
+SQL> select open_mode from v$database;
+
+OPEN_MODE
+--------------------
+MOUNTED
+
+------------------------------------------------------------
+-- Restore the Database 
+
+
+vi restore.cmd
+i
+connect target /
+RUN {
+ALLOCATE CHANNEL a1 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a2 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a3 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a4 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a5 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a6 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a7 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+ALLOCATE CHANNEL a8 TYPE sbt_tape PARMS "SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so" SEND "srcBackup=05264609-9ba1-47bb-9d1d-4925352819e1";
+set newname for database to '+DATA';
+RESTORE DATABASE;
+SWITCH DATAFILE ALL;
+RECOVER DATABASE;
+RELEASE CHANNEL a1;
+RELEASE CHANNEL a2;
+RELEASE CHANNEL a3;
+RELEASE CHANNEL a4;
+RELEASE CHANNEL a5;
+RELEASE CHANNEL a6;
+RELEASE CHANNEL a7;
+RELEASE CHANNEL a8;
+}
+EXIT;
+
+
+nohup rman cmdfile='/u02/soban/restore.cmd' > /u02/soban/restore.log 2>&1 &
+
+
+
+-- It Took around 5 Hours to completed the restore of 5 TB Database.
+------------------------------------------------------------------------------------------------------------------------------------
+
+-- Open DATABASE
+
+Alter database open resetlogs;
+
+
+
+
+
+
+---------------------------------------------------------------------------
+-- Restore archivelogs if NEEDED
+---------------------------------------------------------------------------
+-- not tested
+run
+ 
+{
+ 
+allocate channel t1 type SBT_TAPE parms 'SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so';
+ 
+set archivelog destination to '/dbbackup/dr_bk/';
+ 
+restore archivelog from sequence 158105 until sequence 158144;
+ 
+release channel t1;
+ 
+}
+ 
+ 
+SBT_TAPE parms 'SBT_LIBRARY=/opt/veeam/VeeamPluginforOracleRMAN/libOracleRMANPlugin.so';     	---- this value will get from RMAN " show all".
+ 
+set archivelog destination to '/dbbackup/dr_bk/';							 	---- Where archive file need to restore
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Location for log files on target server for trouble shooting:
+
+# Linux Plugin host:
+
+cd /tmp/veeam_plugin_logs/ && tar -cvf - . |  gzip -9  >  ~/$(hostname)-$(date +"%Y-%m-%d_%H-%M-%S-%z-")-veeam_plugin_logs.tar.gz && cd -
+
+--cd /var/log/VeeamBackup/ && sudo tar -cvf - . | gzip -9 > ~/$(hostname)-$(date +"%Y-%m-%d_%H-%M-%S-%z-")-veeam_deployment_logs.tar.gz && cd -
+
+-- cd /tmp/OracleProxyLogs/ && tar cvf - . |  gzip -9  >  ~/$(hostname)$(date +"%Y-%m-%d_%H-%M-%S-%z-")-OracleProxyLogs.tar.gz && cd -
