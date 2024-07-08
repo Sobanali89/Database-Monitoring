@@ -1,0 +1,48 @@
+SET LINES 333
+SET PAGES 333
+col TYP FOR A10
+COL GRANTEE FOR A10
+COL PRIV FOR A25
+COL AD FOR A3
+COL TABNM FOR A25
+COL OWNER FOR A10
+COL CREATED FOR A16
+COL ACCOUNT_STATUS FOR A10
+select q1.*,q2.created, q2.account_status from (select
+a.*
+from (select 'ROLE' typ,
+grantee grantee,
+granted_role priv,
+admin_option ad,
+'--' tabnm,
+'--' owner
+from dba_role_privs rp join dba_roles r on rp.granted_role = r.role
+where grantee = 'C##DBZUSER'
+union
+select 'SYSTEM' typ,
+grantee grantee,
+privilege priv,
+admin_option ad,
+'--' tabnm,
+'--' owner
+from dba_sys_privs
+where grantee =  'C##DBZUSER'
+union
+select 'TABLE' typ,
+grantee grantee,
+privilege priv,
+grantable ad,
+table_name tabnm,
+owner owner
+from dba_tab_privs
+where grantee =  'C##DBZUSER'
+) a
+order by case
+when a.typ = 'ROLE' then 4
+when a.typ = 'SYSTEM' then 1
+when a.typ = 'TABLE' then 2
+else 5
+end) q1 ,(select username, created,account_status from dba_users where account_status != 'LOCKED'
+--and username not in ( 'PUBLIC','SYS','SYSTEM','ORDSYS','SPATIAL_CSW_ADMIN_USR','GSMUSER_ROLE','CSW_USR_ROLE','SYSDG','GSMADMIN_ROLE','GGSYS','CTXAPP','DBA','XDBADMIN','SYSBACKUP','GSM_POOLADMIN_ROLE','SYS$UMF','IMP_FULL_DATABASE','OPTIMIZER_PROCESSING_RATE','GSMADMIN_INTERNAL','EXP_FULL_DATABASE','WMSYS','SYSUMF_ROLE','DATAPATCH_ROLE','GATHER_SYSTEM_STATISTICS','GSMCATUSER','SPATIAL_CSW_ADMIN','OLAP_DBA','DV_AUDIT_CLEANUP','DV_ADMIN','OLAP_USER','DATAPUMP_IMP_FULL_DATABASE','RECOVERY_CATALOG_OWNER_VPD','GSMUSER','AQ_ADMINISTRATOR_ROLE','MDSYS','SCHEDULER_ADMIN','EM_EXPRESS_ALL','CTXSYS','OUTLN','AUDIT_ADMIN','DVSYS','ORACLE_OCM','DBSNMP','ORDPLUGINS','DV_REALM_OWNER','XDB','JAVADEBUGPRIV','OEM_MONITOR','OLAPSYS','SPATIAL_WFS_ADMIN_USR','EXFSYS','ANONYMOUS','APEX_040200','APEX_PUBLIC_USER','APPQOSSYS','AUDSYS','BI','CTXSYS','DBSNMP','DIP','DVF','DVSYS','EXFSYS','FLOWS_FILES','GSMADMIN_INTERNAL','GSMCATUSER','GSMUSER','HR','IX','LBACSYS','MDDATA','MDSYS','OE','ORACLE_OCM','ORDDATA','ORDPLUGINS','ORDSYS','OUTLN','PM','SCOTT','SH','SI_INFORMTN_SCHEMA','SPATIAL_CSW_ADMIN_USR','SPATIAL_WFS_ADMIN_USR','SYS','SYSBACKUP','SYSDG','SYSKM','SYSTEM','WMSYS','XDB','SYSMAN','RMAN','RMAN_BACKUP','OWBSYS','OWBSYS_AUDIT','APEX_030200','MGMT_VIEW','OJVMSYS','XS$NULL','REMOTE_SCHEDULER_AGENT','DBSFWUSER','SYSRAC')
+) q2
+where q1.grantee=q2.username;
