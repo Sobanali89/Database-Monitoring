@@ -1,0 +1,1420 @@
+### OEM DATABASE AND OMS Patching
+
+From Database 19.3.0.0.0 to Database 19.23.0.0.240416
+From OEM 13.5.0.0.0 to 13.5.0.22
+
+
+# ==================================
+Database Current Version: 19.3.0.0.0
+
+# =========================================
+Applying  Database PSU Version 19.23.0.0.240416
+
+
+# Supporting Documents:
+
+https://support.oracle.com/epmos/faces/DocumentDisplay?_afrLoop=362058121261199&parent=EXTERNAL_SEARCH&sourceId=ANNOUNCEMENT&id=2521164.1&_afrWindowMode=0&_adf.ctrl-state=oycrhc7uy_576#aref_section13)
+
+Patch Readme:
+https://updates.oracle.com/Orion/Services/download?type=readme&aru=25638263#BABDIEDD
+
+-- Backup Oracle Home and Oracle Inventory
+
+ref doc: https://support.oracle.com/epmos/faces/DocumentDisplay?_afrLoop=100214246426267&id=565017.1&_afrWindowMode=0&_adf.ctrl-state=114q1v52wp_346
+Read me: https://updates.oracle.com/Orion/Services/download?type=readme&aru=25638263
+
+tar -pcvf oracle_home_bkp_7july24.tar.gz dbhome_1
+
+tar -pcvf bkp_oraInventory_7july24.tar.gz oraInventory/
+
+-- Download PSU Patch
+-- Download OPatch
+-- Backup current OPatch folder in oracle home
+cp OPatch OPatch_bkp
+
+-- Extract OPatch
+unzip p6880880_190000_Linux-x86-64.zip -d /u01/app/oracle/product/19.0.0/dbhome_1
+
+-- Check New OPatch version
+./opatch version
+
+-- unzip downloaded PSU Patch
+-- Export Path
+
+export PATH=/u01/app/oracle/product/19.0.0/dbhome_1/OPatch:$PATH
+
+-- Check for conflict
+
+cd /u01/patches/36233263
+opatch prereq CheckConflictAgainstOHWithDetail -ph ./
+
+Oracle Interim Patch Installer version 12.2.0.1.42
+Copyright (c) 2024, Oracle Corporation.  All rights reserved.
+
+PREREQ session
+
+Oracle Home       : /u01/app/oracle/product/19.0.0/dbhome_1
+Central Inventory : /u01/app/oraInventory
+   from           : /u01/app/oracle/product/19.0.0/dbhome_1/oraInst.loc
+OPatch version    : 12.2.0.1.42
+OUI version       : 12.2.0.7.0
+Log file location : /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/opatch2024-07-08_12-02-24PM_1.log
+
+Invoking prereq "checkconflictagainstohwithdetail"
+
+Prereq "checkConflictAgainstOHWithDetail" passed.
+
+OPatch succeeded.
+
+---------------------------------
+
+# ============================
+Step 1: Stop OMS and OMS Agent
+
+-- Stop Agent
+[oracle@oemserver02 bin]$ pwd
+/u01/app/oracle/agent/agent_13.5.0.0.0/bin
+
+[oracle@oemserver02 bin]$ ./emctl stop agent
+Oracle Enterprise Manager Cloud Control 13c Release 5  
+Copyright (c) 1996, 2021 Oracle Corporation.  All rights reserved.
+Stopping agent ... stopped.
+
+-- Stop OMS
+
+[oracle@oemserver02 bin]$ pwd
+/u01/app/oracle/middleware/bin
+
+[oracle@oemserver02 bin]$ ./emctl stop oms
+Oracle Enterprise Manager Cloud Control 13c Release 5  
+Copyright (c) 1996, 2021 Oracle Corporation.  All rights reserved.
+Stopping Oracle Management Server...
+Oracle Management Server Successfully Stopped
+Oracle Management Server is Down
+JVMD Engine is Down
+[oracle@oemserver02 bin]$ 
+
+# =================================
+Step 2: Stop Database and Listener
+
+[oracle@oemserver02 ~]$ lsnrctl status
+
+LSNRCTL for Linux: Version 19.0.0.0.0 - Production on 10-JUL-2024 11:42:36
+
+Copyright (c) 1991, 2019, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oemserver02)(PORT=1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 19.0.0.0.0 - Production
+Start Date                05-JUN-2024 11:33:25
+Uptime                    35 days 0 hr. 9 min. 10 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/app/oracle/product/19.0.0/dbhome_1/network/admin/listener.ora
+Listener Log File         /u01/app/oracle/diag/tnslsnr/oemserver02/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=oemserver02.neoleap.com.sa)(PORT=1521)))
+Services Summary...
+Service "EXAOEMDB" has 1 instance(s).
+  Instance "EXAOEMDB", status READY, has 1 handler(s) for this service...
+Service "EXAOEMDBXDB" has 1 instance(s).
+  Instance "EXAOEMDB", status READY, has 1 handler(s) for this service...
+Service "ebc906a54a3bc666e05317320a0aa39f" has 1 instance(s).
+  Instance "EXAOEMDB", status READY, has 1 handler(s) for this service...
+Service "exa_oem_rep" has 1 instance(s).
+  Instance "EXAOEMDB", status READY, has 1 handler(s) for this service...
+The command completed successfully
+[oracle@oemserver02 ~]$ lsnrctl stop
+
+LSNRCTL for Linux: Version 19.0.0.0.0 - Production on 10-JUL-2024 11:42:42
+
+Copyright (c) 1991, 2019, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oemserver02)(PORT=1521)))
+The command completed successfully
+[oracle@oemserver02 ~]$ lsnrctl status
+
+LSNRCTL for Linux: Version 19.0.0.0.0 - Production on 10-JUL-2024 11:42:46
+
+Copyright (c) 1991, 2019, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oemserver02)(PORT=1521)))
+TNS-12541: TNS:no listener
+ TNS-12560: TNS:protocol adapter error
+  TNS-00511: No listener
+   Linux Error: 111: Connection refused
+
+-- Stop DATABASE
+
+[oracle@oemserver02 ~]$ sqlplus / as sysdba
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jul 10 11:42:56 2024
+Version 19.3.0.0.0
+
+Copyright (c) 1982, 2019, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.3.0.0.0
+
+SQL> show parameter pfile;
+
+NAME				     TYPE	 VALUE
+------------------------------------ ----------- ------------------------------
+spfile				     string	 /u01/app/oracle/product/19.0.0
+						 /dbhome_1/dbs/spfileEXAOEMDB.o
+						 ra
+SQL> shut immediate;
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL> 
+
+# =====================
+Step 3: Apply Patch:
+
+[oracle@oemserver02 ~]$ cd /u01/patches/36233263/
+[oracle@oemserver02 36233263]$ opatch apply
+Oracle Interim Patch Installer version 12.2.0.1.42
+Copyright (c) 2024, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /u01/app/oracle/product/19.0.0/dbhome_1
+Central Inventory : /u01/app/oraInventory
+   from           : /u01/app/oracle/product/19.0.0/dbhome_1/oraInst.loc
+OPatch version    : 12.2.0.1.42
+OUI version       : 12.2.0.7.0
+Log file location : /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/opatch2024-07-10_11-44-13AM_1.log
+
+Verifying environment and performing prerequisite checks...
+
+--------------------------------------------------------------------------------
+Start OOP by Prereq process.
+Launch OOP...
+
+Oracle Interim Patch Installer version 12.2.0.1.42
+Copyright (c) 2024, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /u01/app/oracle/product/19.0.0/dbhome_1
+Central Inventory : /u01/app/oraInventory
+   from           : /u01/app/oracle/product/19.0.0/dbhome_1/oraInst.loc
+OPatch version    : 12.2.0.1.42
+OUI version       : 12.2.0.7.0
+Log file location : /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/opatch2024-07-10_11-44-52AM_1.log
+
+Verifying environment and performing prerequisite checks...
+OPatch continues with these patches:   36233263  
+
+Do you want to proceed? [y|n]
+y
+User Responded with: Y
+All checks passed.
+
+Please shutdown Oracle instances running out of this ORACLE_HOME on the local system.
+(Oracle Home = '/u01/app/oracle/product/19.0.0/dbhome_1')
+
+
+Is the local system ready for patching? [y|n]
+y
+User Responded with: Y
+Backing up files...
+Applying interim patch '36233263' to OH '/u01/app/oracle/product/19.0.0/dbhome_1'
+ApplySession: Optional component(s) [ oracle.network.gsm, 19.0.0.0.0 ] , [ oracle.crypto.rsf, 19.0.0.0.0 ] , [ oracle.pg4mq, 19.0.0.0.0 ] , [ oracle.precomp.companion, 19.0.0.0.0 ] , [ oracle.rdbms.ic, 19.0.0.0.0 ] , [ oracle.rdbms.tg4db2, 19.0.0.0.0 ] , [ oracle.tfa, 19.0.0.0.0 ] , [ oracle.net.cman, 19.0.0.0.0 ] , [ oracle.oid.client, 19.0.0.0.0 ] , [ oracle.rdbms.tg4sybs, 19.0.0.0.0 ] , [ oracle.rdbms.tg4ifmx, 19.0.0.0.0 ] , [ oracle.xdk.companion, 19.0.0.0.0 ] , [ oracle.rdbms.tg4msql, 19.0.0.0.0 ] , [ oracle.rdbms.tg4tera, 19.0.0.0.0 ] , [ oracle.ons.cclient, 19.0.0.0.0 ] , [ oracle.pg4appc, 19.0.0.0.0 ] , [ oracle.options.olap, 19.0.0.0.0 ] , [ oracle.options.olap.api, 19.0.0.0.0 ] , [ oracle.ons.eons.bwcompat, 19.0.0.0.0 ] , [ oracle.network.cman, 19.0.0.0.0 ] , [ oracle.sdo.companion, 19.0.0.0.0 ] , [ oracle.jdk, 1.8.0.191.0 ]  not present in the Oracle Home or a higher version is found.
+
+Patching component oracle.rdbms.rsf, 19.0.0.0.0...
+
+Patching component oracle.rdbms.util, 19.0.0.0.0...
+
+Patching component oracle.rdbms, 19.0.0.0.0...
+
+Patching component oracle.assistants.acf, 19.0.0.0.0...
+
+Patching component oracle.assistants.deconfig, 19.0.0.0.0...
+
+Patching component oracle.assistants.server, 19.0.0.0.0...
+
+Patching component oracle.blaslapack, 19.0.0.0.0...
+
+Patching component oracle.buildtools.rsf, 19.0.0.0.0...
+
+Patching component oracle.ctx, 19.0.0.0.0...
+
+Patching component oracle.dbdev, 19.0.0.0.0...
+
+Patching component oracle.dbjava.ic, 19.0.0.0.0...
+
+Patching component oracle.dbjava.jdbc, 19.0.0.0.0...
+
+Patching component oracle.dbjava.ucp, 19.0.0.0.0...
+
+Patching component oracle.duma, 19.0.0.0.0...
+
+Patching component oracle.javavm.client, 19.0.0.0.0...
+
+Patching component oracle.ldap.owm, 19.0.0.0.0...
+
+Patching component oracle.ldap.rsf, 19.0.0.0.0...
+
+Patching component oracle.ldap.security.osdt, 19.0.0.0.0...
+
+Patching component oracle.marvel, 19.0.0.0.0...
+
+Patching component oracle.network.rsf, 19.0.0.0.0...
+
+Patching component oracle.odbc.ic, 19.0.0.0.0...
+
+Patching component oracle.ons, 19.0.0.0.0...
+
+Patching component oracle.ons.ic, 19.0.0.0.0...
+
+Patching component oracle.oracore.rsf, 19.0.0.0.0...
+
+Patching component oracle.perlint, 5.28.1.0.0...
+
+Patching component oracle.precomp.common.core, 19.0.0.0.0...
+
+Patching component oracle.precomp.rsf, 19.0.0.0.0...
+
+Patching component oracle.rdbms.crs, 19.0.0.0.0...
+
+Patching component oracle.rdbms.dbscripts, 19.0.0.0.0...
+
+Patching component oracle.rdbms.deconfig, 19.0.0.0.0...
+
+Patching component oracle.rdbms.oci, 19.0.0.0.0...
+
+Patching component oracle.rdbms.rsf.ic, 19.0.0.0.0...
+
+Patching component oracle.rdbms.scheduler, 19.0.0.0.0...
+
+Patching component oracle.rhp.db, 19.0.0.0.0...
+
+Patching component oracle.rsf, 19.0.0.0.0...
+
+Patching component oracle.sdo, 19.0.0.0.0...
+
+Patching component oracle.sdo.locator.jrf, 19.0.0.0.0...
+
+Patching component oracle.sqlplus, 19.0.0.0.0...
+
+Patching component oracle.sqlplus.ic, 19.0.0.0.0...
+
+Patching component oracle.wwg.plsql, 19.0.0.0.0...
+
+Patching component oracle.xdk.rsf, 19.0.0.0.0...
+
+Patching component oracle.rdbms.hsodbc, 19.0.0.0.0...
+
+Patching component oracle.ldap.client, 19.0.0.0.0...
+
+Patching component oracle.rdbms.rman, 19.0.0.0.0...
+
+Patching component oracle.rdbms.dv, 19.0.0.0.0...
+
+Patching component oracle.xdk.parser.java, 19.0.0.0.0...
+
+Patching component oracle.ldap.rsf.ic, 19.0.0.0.0...
+
+Patching component oracle.oraolap.api, 19.0.0.0.0...
+
+Patching component oracle.javavm.server, 19.0.0.0.0...
+
+Patching component oracle.mgw.common, 19.0.0.0.0...
+
+Patching component oracle.xdk, 19.0.0.0.0...
+
+Patching component oracle.odbc, 19.0.0.0.0...
+
+Patching component oracle.xdk.xquery, 19.0.0.0.0...
+
+Patching component oracle.nlsrtl.rsf, 19.0.0.0.0...
+
+Patching component oracle.rdbms.lbac, 19.0.0.0.0...
+
+Patching component oracle.network.client, 19.0.0.0.0...
+
+Patching component oracle.network.listener, 19.0.0.0.0...
+
+Patching component oracle.install.deinstalltool, 19.0.0.0.0...
+
+Patching component oracle.ctx.atg, 19.0.0.0.0...
+
+Patching component oracle.nlsrtl.rsf.core, 19.0.0.0.0...
+
+Patching component oracle.nlsrtl.rsf.ic, 19.0.0.0.0...
+
+Patching component oracle.nlsrtl.rsf, 19.0.0.0.0...
+
+Patching component oracle.rdbms.install.common, 19.0.0.0.0...
+
+Patching component oracle.oraolap.dbscripts, 19.0.0.0.0...
+
+Patching component oracle.sdo.locator, 19.0.0.0.0...
+
+Patching component oracle.rdbms.drdaas, 19.0.0.0.0...
+
+Patching component oracle.nlsrtl.rsf.lbuilder, 19.0.0.0.0...
+
+Patching component oracle.oraolap, 19.0.0.0.0...
+
+Patching component oracle.ovm, 19.0.0.0.0...
+
+Patching component oracle.rdbms.hs_common, 19.0.0.0.0...
+
+Patching component oracle.ctx.rsf, 19.0.0.0.0...
+
+Patching component oracle.dbtoolslistener, 19.0.0.0.0...
+
+Patching component oracle.ldap.ssl, 19.0.0.0.0...
+
+Patching component oracle.rdbms.install.plugins, 19.0.0.0.0...
+
+Patching component oracle.precomp.common, 19.0.0.0.0...
+
+Patching component oracle.precomp.lang, 19.0.0.0.0...
+
+Patching component oracle.jdk, 1.8.0.201.0...
+Patch 36233263 successfully applied.
+Sub-set patch [29517242] has become inactive due to the application of a super-set patch [36233263].
+Please refer to Doc ID 2161861.1 for any possible further required actions.
+Log file location: /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/opatch2024-07-10_11-44-52AM_1.log
+
+OPatch succeeded.
+
+# =========================================
+Step 4: Start Database and run datapatch
+
+[oracle@oemserver02 36233263]$ sqlplus /nolog
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jul 10 11:54:33 2024
+Version 19.23.0.0.0
+
+Copyright (c) 1982, 2023, Oracle.  All rights reserved.
+
+SQL> connect / as sysdba
+Connected to an idle instance.
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area 2.1475E+10 bytes
+Fixed Size		   13922864 bytes
+Variable Size		 5234491392 bytes
+Database Buffers	 1.6173E+10 bytes
+Redo Buffers		   53182464 bytes
+Database mounted.
+Database opened.
+SQL> show pdbs;  
+
+    CON_ID CON_NAME			  OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+	 2 PDB$SEED			  READ ONLY  NO
+	 3 EXA_OEM_REP			  READ WRITE NO
+SQL> alter pluggable database all open;
+
+Pluggable database altered.
+
+SQL> quit
+Disconnected from Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.23.0.0.0
+[oracle@oemserver02 36233263]$ cd $ORACLE_HOME/OPatch
+[oracle@oemserver02 OPatch]$ ./datapatch -sanity_checks
+SQL Patching sanity checks version 19.23.0.0.0 on Wed 10 Jul 2024 11:55:52 AM +03
+Copyright (c) 2021, 2024, Oracle.  All rights reserved.
+
+Log file for this invocation: /u01/app/oracle/cfgtoollogs/sqlpatch/sanity_checks_20240710_115552_1474079/sanity_checks_20240710_115552_1474079.log
+
+Running checks
+JSON report generated in /u01/app/oracle/cfgtoollogs/sqlpatch/sanity_checks_20240710_115552_1474079/sqlpatch_sanity_checks_summary.json file
+Checks completed. Printing report:
+
+Check: Database component status - OK
+Check: PDB Violations - OK
+Check: Invalid System Objects - OK
+Check: Tablespace Status - OK
+Check: Backup jobs - OK
+Check: Temp file exists - OK
+Check: Temp file online - OK
+Check: Data Pump running - OK
+Check: Container status - OK
+Check: Oracle Database Keystore - OK
+Check: Dictionary statistics gathering - WARNING
+  Patching the database while dictionary statistics are being collected may lead to performance issues.
+  Dictionary statistics are currently being collected in the database.
+  Consider patching the database when dictionary statistics are not being collected. To check if such operations are currently running, run this query:
+    SELECT sofar, totalwork, units, start_time, time_remaining, message
+    FROM sys.v$session_longops
+    WHERE opname = 'Gather Dictionary Schema Statistics'
+    AND time_remaining > 0;
+  PDB$SEED:
+    |     LATEST      |        OPERATION        |
+    |-----------------+-------------------------|
+    | 17-APR-19 02:03 | gather_dictionary_stats |
+    |-----------------+-------------------------|
+Check: Scheduled Jobs - OK
+Check: GoldenGate triggers - OK
+Check: Logminer DDL triggers - OK
+Check: Check sys public grants - OK
+Check: Statistics gathering running - OK
+Check: Optim dictionary upgrade parameter - OK
+Check: Symlinks on oracle home path - OK
+Check: Central Inventory - OK
+Check: Queryable Inventory dba directories - OK
+Check: Queryable Inventory locks - OK
+Check: Queryable Inventory package - ERROR
+  Datapatch uses Queryable Inventory to get OPatch Inventory information and create a patching installation plan.
+  The Queryable Inventory package is not able to retrieve OPatch Inventory information.
+  Refer to MOS Note 1602089.1 for details on verifying the Queryable Inventory package before patching.
+  CDB$ROOT:
+    | RESULT  |
+    |---------|
+    | Failure |
+    |---------|
+Check: Queryable Inventory external table - SKIPPED (ERROR)
+  Message: Skipped as previous check wasnt executed successfully.
+Check: Imperva processes - OK
+Check: Guardium processes - OK
+Check: Locale - OK
+
+Refer to MOS Note 2680521.1 and debug log
+/u01/app/oracle/cfgtoollogs/sqlpatch/sanity_checks_20240710_115552_1474079/sanity_checks_debug_20240710_115552_1474079.log
+
+SQL Patching sanity checks completed on Wed 10 Jul 2024 11:56:02 AM +03
+[oracle@oemserver02 OPatch]$ ./datapatch -verbose
+SQL Patching tool version 19.23.0.0.0 Production on Wed Jul 10 11:56:58 2024
+Copyright (c) 2012, 2024, Oracle.  All rights reserved.
+
+Log file for this invocation: /u01/app/oracle/cfgtoollogs/sqlpatch/sqlpatch_1474475_2024_07_10_11_56_58/sqlpatch_invocation.log
+
+Connecting to database...OK
+Gathering database info...done
+
+Note:  Datapatch will only apply or rollback SQL fixes for PDBs
+       that are in an open state, no patches will be applied to closed PDBs.
+       Please refer to Note: Datapatch: Database 12c Post Patch SQL Automation
+       (Doc ID 1585822.1)
+
+Bootstrapping registry and package to current versions...done
+Determining current state...done
+
+Current state of interim SQL patches:
+  No interim patches found
+
+Current state of release update SQL patches:
+  Binary registry:
+    19.23.0.0.0 Release_Update 240406004238: Installed
+  PDB CDB$ROOT:
+    Applied 19.3.0.0.0 Release_Update 190410122720 successfully on 24-OCT-22 09.37.06.820364 AM
+  PDB EXA_OEM_REP:
+    Applied 19.3.0.0.0 Release_Update 190410122720 successfully on 24-OCT-22 09.43.47.032485 AM
+  PDB PDB$SEED:
+    Applied 19.3.0.0.0 Release_Update 190410122720 successfully on 24-OCT-22 09.43.47.032485 AM
+
+Adding patches to installation queue and performing prereq checks...done
+Installation queue:
+  For the following PDBs: CDB$ROOT PDB$SEED EXA_OEM_REP
+    No interim patches need to be rolled back
+    Patch 36233263 (Database Release Update : 19.23.0.0.240416 (36233263)):
+      Apply from 19.3.0.0.0 Release_Update 190410122720 to 19.23.0.0.0 Release_Update 240406004238
+    No interim patches need to be applied
+
+Installing patches...
+Patch installation complete.  Total patches installed: 3
+
+Validating logfiles...done
+Patch 36233263 apply (pdb CDB$ROOT): SUCCESS
+  logfile: /u01/app/oracle/cfgtoollogs/sqlpatch/36233263/25638263/36233263_apply_EXAOEMDB_CDBROOT_2024Jul10_11_57_37.log (no errors)
+Patch 36233263 apply (pdb PDB$SEED): SUCCESS
+  logfile: /u01/app/oracle/cfgtoollogs/sqlpatch/36233263/25638263/36233263_apply_EXAOEMDB_PDBSEED_2024Jul10_12_02_35.log (no errors)
+Patch 36233263 apply (pdb EXA_OEM_REP): SUCCESS
+  logfile: /u01/app/oracle/cfgtoollogs/sqlpatch/36233263/25638263/36233263_apply_EXAOEMDB_EXA_OEM_REP_2024Jul10_12_02_35.log (no errors)
+
+Automatic recompilation incomplete; run utlrp.sql to revalidate.
+  PDBs: CDB$ROOT EXA_OEM_REP PDB$SEED
+
+SQL Patching tool complete on Wed Jul 10 12:06:56 2024
+
+# ==============================================
+Step 5: Verify the patch is applied successfully
+# ==============================================
+
+
+SET LINESIZE 500
+SET PAGESIZE 1000
+SET SERVEROUT ON
+SET LONG 2000000
+ 
+COLUMN action_time FORMAT A20
+COLUMN action FORMAT A10
+COLUMN status FORMAT A10
+COLUMN description FORMAT A66
+COLUMN source_version FORMAT A14
+COLUMN target_version FORMAT A14
+ 
+ 
+alter session set "_exclude_seed_cdb_view"=FALSE;
+alter session set nls_timestamp_format = 'dd-MON-yyyy hh24:mi:ss';
+ 
+select CON_ID,
+        TO_CHAR(action_time, 'YYYY-MM-DD  hh24:mi') AS action_time,
+        PATCH_ID,
+        PATCH_TYPE,
+        ACTION,
+        DESCRIPTION,
+        SOURCE_VERSION,
+        TARGET_VERSION
+   from CDB_REGISTRY_SQLPATCH
+  order by  action_time, patch_id;
+  
+
+    CON_ID ACTION_TIME		  PATCH_ID PATCH_TYPE ACTION	 DESCRIPTION							    SOURCE_VERSION TARGET_VERSION
+---------- -------------------- ---------- ---------- ---------- ------------------------------------------------------------------ -------------- --------------
+	 1 2022-10-24  09:37	  29517242 RU	      APPLY	 Database Release Update : 19.3.0.0.190416 (29517242)		    19.1.0.0.0	   19.3.0.0.0
+	 3 2022-10-24  09:43	  29517242 RU	      APPLY	 Database Release Update : 19.3.0.0.190416 (29517242)		    19.1.0.0.0	   19.3.0.0.0
+	 2 2022-10-24  09:43	  29517242 RU	      APPLY	 Database Release Update : 19.3.0.0.190416 (29517242)		    19.1.0.0.0	   19.3.0.0.0
+	 1 2024-07-10  12:02	  36233263 RU	      APPLY	 Database Release Update : 19.23.0.0.240416 (36233263)		    19.3.0.0.0	   19.23.0.0.0
+	 3 2024-07-10  12:02	  36233263 RU	      APPLY	 Database Release Update : 19.23.0.0.240416 (36233263)		    19.3.0.0.0	   19.23.0.0.0
+	 2 2024-07-10  12:02	  36233263 RU	      APPLY	 Database Release Update : 19.23.0.0.240416 (36233263)		    19.3.0.0.0	   19.23.0.0.0
+
+
+# ==============================================
+Step 5: Start OMS and Agent on OMS Server
+# ==============================================
+
+
+[oracle@oemserver02 OPatch]$ cd /u01/app/oracle/middleware/bin/
+[oracle@oemserver02 bin]$ ./emctl start oms
+Oracle Enterprise Manager Cloud Control 13c Release 5  
+Copyright (c) 1996, 2021 Oracle Corporation.  All rights reserved.
+Starting Oracle Management Server...
+WebTier Successfully Started
+Oracle Management Server Successfully Started
+Oracle Management Server is Up
+JVMD Engine is Up
+
+
+**********************************************************************************************************************************************************************
+**********************************************************************************************************************************************************************
+*******************************************************************  OMS PATCHING   **********************************************************************************
+**********************************************************************************************************************************************************************
+**********************************************************************************************************************************************************************
+**********************************************************************************************************************************************************************
+
+
+OMS Patch
+
+# ===========================
+Current Version: 13.5.0.0.0
+
+
+# =====================
+Supporting Documents:
+
+Enterprise Manager 13.5 Main Release Update List (Includes Plug-ins) (Doc ID 2760230.2)
+https://support.oracle.com/epmos/faces/DocumentDisplay?_afrLoop=359979852753406&parent=SrDetailText&sourceId=3-34057821151&id=2760230.2&_afrWindowMode=0&_adf.ctrl-state=oycrhc7uy_131
+
+13.5: How To Upgrade Enterprise Manager 13.5 Cloud Control OMSPatcher Utility to the Latest Version (Doc ID 2809842.1)
+https://support.oracle.com/epmos/faces/DocumentDisplay?parent=DOCUMENT&sourceId=3023005.1&id=2809842.1&_adf.ctrl-state=uyija5xz5_94&_afrLoop=278218814550979
+
+13.5.0 Enterprise Manager Cloud Control Base Platform Monthly Release Update (RU) 18 (Doc ID 2991824.1):
+https://support.oracle.com/epmos/faces/DocumentDisplay?_afrLoop=360007780562897&parent=DOCUMENT&sourceId=2760230.2&id=2991824.1&_afrWindowMode=0&_adf.ctrl-state=oycrhc7uy_172
+
+Read Me
+Oracle® Enterprise Manager 13c Release 5 Update 22 (13.5.0.22) for Oracle Management Service
+https://updates.oracle.com/Orion/Services/download?type=readme&aru=25622731
+
+
+# ==========================
+Step 1: Update OMSPatcher
+
+Ensure that you have OMSPatcher version 13.9.5.16.0 or later for Enterprise Manager 13.5.0.0 release on all OMSes.
+
+1. Download Patch 19999993 for EM 13.5.0.0.0 from My Oracle Support.
+2. Copy the zip file "p19999993_135000_Generic.zip" to the EM 13.5 <OMS ORACLE_HOME>.
+3. Take a backup of the existing <OMS ORACLE_HOME>/OMSPatcher directory:
+
+mv <OMS ORACLE_HOME>/OMSPatcher <OMS ORACLE_HOME>/OMSPatcher_old
+
+1. Unzip the p19999993_135000_Generic.zip file inside the <OMS ORACLE_HOME>:
+
+[oracle@oemserver02 OMSPatcher]$ pwd
+/u01/app/oracle/middleware/OMSPatcher
+
+[oracle@oemserver02 OMSPatcher]$ ./omspatcher version
+OMSPatcher Version: 13.9.5.20.0
+OPlan Version: 12.2.0.1.16
+OsysModel build: Tue Apr 28 18:16:31 PDT 2020
+
+OMSPatcher succeeded.
+
+# ===========================
+Step2 : Apply JDBC patches
+
+Apply the 12.2.1.4.0 version of below JDBC Patches on all the OMSes before proceeding with Enterprise Manager 13c Release 5 Update 22 patch 36335368 or later
+
+MLR Patch 35430934 (or its superset) which includes 32720458 and 33607709
+Patch 34153238
+Patch 31657681
+
+-- Stop OMS
+
+[oracle@oemserver02 bin]$ ./emctl stop oms
+Oracle Enterprise Manager Cloud Control 13c Release 5  
+Copyright (c) 1996, 2021 Oracle Corporation.  All rights reserved.
+Stopping Oracle Management Server...
+Oracle Management Server Successfully Stopped
+Oracle Management Server is Down
+JVMD Engine is Down
+
+-- Export Middleware home Path
+ORACLE_HOME=/u01/app/oracle/middleware; export ORACLE_HOME
+export PATH=/u01/app/oracle/middleware/OPatch:$PATH
+
+[oracle@oemserver02 OPatch]$ cd /u01/patches/35430934/
+[oracle@oemserver02 35430934]$ opatch apply
+Oracle Interim Patch Installer version 13.9.4.2.5
+Copyright (c) 2024, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /u01/app/oracle/middleware
+Central Inventory : /u01/app/oraInventory
+   from           : /u01/app/oracle/middleware/oraInst.loc
+OPatch version    : 13.9.4.2.5
+OUI version       : 13.9.4.0.0
+Log file location : /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-40-13PM_1.log
+
+
+OPatch detects the Middleware Home as "/u01/app/oracle/middleware"
+
+Verifying environment and performing prerequisite checks...
+OPatch continues with these patches:   35430934  
+
+Do you want to proceed? [y|n]
+y
+User Responded with: Y
+All checks passed.
+
+Please shutdown Oracle instances running out of this ORACLE_HOME on the local system.
+(Oracle Home = '/u01/app/oracle/middleware')
+
+
+Is the local system ready for patching? [y|n]
+y
+User Responded with: Y
+Backing up files...
+Applying interim patch '35430934' to OH '/u01/app/oracle/middleware'
+
+Patching component oracle.javavm.jrf, 19.3.0.0.0...
+Patch 35430934 successfully applied.
+Log file location: /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-40-13PM_1.log
+
+OPatch succeeded.
+
+
+
+[oracle@oemserver02 patches]$ cd 34153238/
+[oracle@oemserver02 34153238]$ opatch apply
+Oracle Interim Patch Installer version 13.9.4.2.5
+Copyright (c) 2024, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /u01/app/oracle/middleware
+Central Inventory : /u01/app/oraInventory
+   from           : /u01/app/oracle/middleware/oraInst.loc
+OPatch version    : 13.9.4.2.5
+OUI version       : 13.9.4.0.0
+Log file location : /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-41-58PM_1.log
+
+
+OPatch detects the Middleware Home as "/u01/app/oracle/middleware"
+
+Verifying environment and performing prerequisite checks...
+OPatch continues with these patches:   34153238  
+
+Do you want to proceed? [y|n]
+y
+User Responded with: Y
+All checks passed.
+
+Please shutdown Oracle instances running out of this ORACLE_HOME on the local system.
+(Oracle Home = '/u01/app/oracle/middleware')
+
+
+Is the local system ready for patching? [y|n]
+y
+User Responded with: Y
+Backing up files...
+Applying interim patch '34153238' to OH '/u01/app/oracle/middleware'
+
+Patching component oracle.javavm.jrf, 19.3.0.0.0...
+Patch 34153238 successfully applied.
+Log file location: /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-41-58PM_1.log
+
+OPatch succeeded.
+
+
+[oracle@oemserver02 34153238]$ cd ../31657681/
+[oracle@oemserver02 31657681]$ opatch apply
+Oracle Interim Patch Installer version 13.9.4.2.5
+Copyright (c) 2024, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /u01/app/oracle/middleware
+Central Inventory : /u01/app/oraInventory
+   from           : /u01/app/oracle/middleware/oraInst.loc
+OPatch version    : 13.9.4.2.5
+OUI version       : 13.9.4.0.0
+Log file location : /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-42-39PM_1.log
+
+
+OPatch detects the Middleware Home as "/u01/app/oracle/middleware"
+
+Verifying environment and performing prerequisite checks...
+OPatch continues with these patches:   31657681  
+
+Do you want to proceed? [y|n]
+y
+User Responded with: Y
+All checks passed.
+
+Please shutdown Oracle instances running out of this ORACLE_HOME on the local system.
+(Oracle Home = '/u01/app/oracle/middleware')
+
+
+Is the local system ready for patching? [y|n]
+y
+User Responded with: Y
+Backing up files...
+Applying interim patch '31657681' to OH '/u01/app/oracle/middleware'
+
+Patching component oracle.javavm.jrf, 19.3.0.0.0...
+Patch 31657681 successfully applied.
+Log file location: /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-42-39PM_1.log
+
+OPatch succeeded.
+
+
+# =====================================================
+Step 3: Apply omspatcher patch analyze before applying
+# =====================================================
+
+-- You will need weblogic and sys password to apply this patch
+
+[oracle@oemserver02 OMSPatcher]$ ./omspatcher apply /u01/patches/36335368 -analyze
+OMSPatcher Automation Tool
+Copyright (c) 2017, Oracle Corporation.  All rights reserved.
+
+
+OMSPatcher version : 13.9.5.20.0
+OUI version        : 13.9.4.0.0
+Running from       : /u01/app/oracle/middleware
+Log file location  : /u01/app/oracle/middleware/cfgtoollogs/omspatcher/opatch2024-07-10_13-46-39PM_1.log
+
+OMSPatcher log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/36335368/omspatcher_2024-07-10_13-46-43PM_analyze.log
+
+Please enter OMS weblogic admin server URL(t3s://oemserver02:7102):> 
+Please enter OMS weblogic admin server username(weblogic):> 
+Please enter OMS weblogic admin server password:> 
+
+Enter DB user name : sysman	
+Enter 'SYSMAN' password : 
+Checking if current repository database is a supported version
+Current repository database version is supported
+
+
+Prereq "checkComponents" for patch 36329009 passed.
+
+Prereq "checkComponents" for patch 36329231 passed.
+
+Prereq "checkComponents" for patch 36329196 passed.
+
+Prereq "checkComponents" for patch 36329020 passed.
+
+Prereq "checkComponents" for patch 36329033 passed.
+
+Prereq "checkComponents" for patch 36329152 passed.
+
+Configuration Validation: Success
+
+
+Running apply prerequisite checks for sub-patch(es) "36329033,36329196,36329020,36329009,36329231,36329152" and Oracle Home "/u01/app/oracle/middleware"...
+Sub-patch(es) "36329033,36329196,36329020,36329009,36329231,36329152" are successfully analyzed for Oracle Home "/u01/app/oracle/middleware"
+
+
+Complete Summary
+================
+
+
+All log file names referenced below can be accessed from the directory "/u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_13-46-39PM_SystemPatch_36335368_1"
+
+Prerequisites analysis summary:
+-------------------------------
+
+The following sub-patch(es) are applicable:
+
+             Featureset                                             Sub-patches                                                                                  Log file
+             ----------                                             -----------                                                                                  --------
+  oracle.sysman.top.oms   36329033,36329196,36329020,36329009,36329231,36329152   36329033,36329196,36329020,36329009,36329231,36329152_opatch2024-07-10_13-47-27PM_1.log
+
+
+The following sub-patches are incompatible with components installed in the OMS system:
+35582217,34430509,34706773,36329066,35854914,36161799,36329046,36329161,36329220
+
+
+
+Log file location: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/36335368/omspatcher_2024-07-10_13-46-43PM_analyze.log
+
+OMSPatcher succeeded.
+
+# ======================================================
+Step 4: Apply RU with omspatcher
+# ======================================================
+
+-- You will need weblogic and sys password to apply this patch
+
+[oracle@oemserver02 OMSPatcher]$ ./omspatcher apply /u01/patches/36335368
+OMSPatcher Automation Tool
+Copyright (c) 2017, Oracle Corporation.  All rights reserved.
+
+
+OMSPatcher version : 13.9.5.20.0
+OUI version        : 13.9.4.0.0
+Running from       : /u01/app/oracle/middleware
+Log file location  : /u01/app/oracle/middleware/cfgtoollogs/omspatcher/opatch2024-07-10_13-57-16PM_1.log
+
+OMSPatcher log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/36335368/omspatcher_2024-07-10_13-57-20PM_apply.log
+
+Please enter OMS weblogic admin server URL(t3s://oemserver02:7102):> 
+Please enter OMS weblogic admin server username(weblogic):> 
+Please enter OMS weblogic admin server password:> 
+
+Enter DB user name : sys
+Enter 'sys' password : 
+Checking if current repository database is a supported version
+Current repository database version is supported
+
+
+Prereq "checkComponents" for patch 36329009 passed.
+
+Prereq "checkComponents" for patch 36329231 passed.
+
+Prereq "checkComponents" for patch 36329196 passed.
+
+Prereq "checkComponents" for patch 36329020 passed.
+
+Prereq "checkComponents" for patch 36329033 passed.
+
+Prereq "checkComponents" for patch 36329152 passed.
+
+Configuration Validation: Success
+
+
+Running apply prerequisite checks for sub-patch(es) "36329033,36329196,36329020,36329009,36329231,36329152" and Oracle Home "/u01/app/oracle/middleware"...
+Sub-patch(es) "36329033,36329196,36329020,36329009,36329231,36329152" are successfully analyzed for Oracle Home "/u01/app/oracle/middleware"
+
+To continue, OMSPatcher will do the following:
+[Patch and deploy artifacts]   : Apply sub-patch(es) [ 36329009 36329020 36329033 36329152 36329196 36329231 ]
+                                 Apply RCU artifact with patch "/u01/app/oracle/middleware/.omspatcher_storage/36329009_May_8_2024_01_15_01/original_patch";
+                                 Apply RCU artifact with patch "/u01/app/oracle/middleware/.omspatcher_storage/36329231_May_8_2024_02_03_34/original_patch";
+                                 Apply RCU artifact with patch "/u01/app/oracle/middleware/.omspatcher_storage/36329196_May_8_2024_02_05_43/original_patch";
+                                 Apply RCU artifact with patch "/u01/app/oracle/middleware/.omspatcher_storage/36329020_May_8_2024_02_03_23/original_patch";
+                                 Apply RCU artifact with patch "/u01/app/oracle/middleware/.omspatcher_storage/36329033_May_8_2024_02_04_14/original_patch";
+                                 Apply RCU artifact with patch "/u01/app/oracle/middleware/.omspatcher_storage/36329152_May_8_2024_02_04_58/original_patch";
+                                 Register MRS artifact "commands";
+                                 Register MRS artifact "omsPropertyDef";
+                                 Register MRS artifact "targetType";
+                                 Register MRS artifact "chargeback";
+                                 Register MRS artifact "default_collection";
+                                 Register MRS artifact "assoc";
+                                 Register MRS artifact "jobTypes";
+                                 Register MRS artifact "systemStencil";
+                                 Register MRS artifact "procedures";
+                                 Register MRS artifact "discovery";
+                                 Register MRS artifact "EcmMetadataOnlyRegistration";
+                                 Register MRS artifact "swlib";
+                                 Register MRS artifact "OracleCertifiedTemplate";
+                                 Register MRS artifact "namedQuery";
+                                 Register MRS artifact "TargetPrivilege";
+                                 Register MRS artifact "CredStoreMetadata";
+                                 Register MRS artifact "storeTargetType";
+                                 Register MRS artifact "gccompliance";
+                                 Register MRS artifact "compression";
+                                 Register MRS artifact "eventSpecificCustmzn";
+                                 Register MRS artifact "report";
+                                 Register MRS artifact "namedsql";
+                                 Register MRS artifact "runbooks";
+                                 Register MRS artifact "SecurityClassManager";
+                                 Register MRS artifact "derivedAssocs"
+
+
+Do you want to proceed? [y|n]
+y
+User Responded with: Y
+Stopping the OMS.....
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-04-02PM_SystemPatch_36335368_9/stop_oms_2024-07-10_14-04-02PM.log
+
+
+Applying sub-patch(es) "36329009,36329020,36329033,36329152,36329196,36329231"
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/opatch/opatch2024-07-10_13-57-39PM_1.log
+
+Starting the ADMIN .....
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-09-16PM_SystemPatch_36335368_12/start_admin_2024-07-10_14-09-16PM.log
+
+Deploying Library  .....org.bouncycastle.bcpkix#1.1@1.76.0.0
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-10-21PM_SystemPatch_36335368_13/deploy_library_2024-07-10_14-10-21PM.log
+
+Deploying Library  .....sshdsftp_jar#2.12@2.12.0
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-10-34PM_SystemPatch_36335368_14/deploy_library_2024-07-10_14-10-34PM.log
+
+Deploying Library  .....sshdcore_jar#2.12@2.12.0
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-10-46PM_SystemPatch_36335368_15/deploy_library_2024-07-10_14-10-46PM.log
+
+Deploying Library  .....log4j-core_jar#2.17.1@2.17.1
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-10-58PM_SystemPatch_36335368_16/deploy_library_2024-07-10_14-10-58PM.log
+
+Deploying Library  .....log4j-bridge_jar#2.17.1@2.17.1
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-10PM_SystemPatch_36335368_17/deploy_library_2024-07-10_14-11-10PM.log
+
+Deploying Library  .....log4j-api_jar#2.17.1@2.17.1
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-22PM_SystemPatch_36335368_18/deploy_library_2024-07-10_14-11-22PM.log
+
+Deploying Library  .....slf4japi_jar#1.7.36@1.7.36
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-34PM_SystemPatch_36335368_19/deploy_library_2024-07-10_14-11-34PM.log
+
+Deploying Library  .....org.bouncycastle.bcprovider#1.1@1.76.0.0
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-46PM_SystemPatch_36335368_20/deploy_library_2024-07-10_14-11-46PM.log
+
+Deploying Library  .....sshdcommon_jar#2.12@2.12.0
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/deploy_library_2024-07-10_14-11-57PM.log
+
+DB user 'sys' is allowed to perform startOP patching operation.
+
+Updating repository with RCU reference file "/u01/app/oracle/middleware/.omspatcher_storage/36329009_May_8_2024_01_15_01/original_patch"
+
+Updating repository with RCU reference file "/u01/app/oracle/middleware/.omspatcher_storage/36329231_May_8_2024_02_03_34/original_patch" for plugin home "/u01/app/oracle/middleware/plugins/oracle.sysman.cfw.oms.plugin_13.5.1.0.0"
+
+Updating repository with RCU reference file "/u01/app/oracle/middleware/.omspatcher_storage/36329196_May_8_2024_02_05_43/original_patch" for plugin home "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0"
+
+Updating repository with RCU reference file "/u01/app/oracle/middleware/.omspatcher_storage/36329020_May_8_2024_02_03_23/original_patch" for plugin home "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0"
+
+Updating repository with RCU reference file "/u01/app/oracle/middleware/.omspatcher_storage/36329033_May_8_2024_02_04_14/original_patch" for plugin home "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0"
+
+Updating repository with RCU reference file "/u01/app/oracle/middleware/.omspatcher_storage/36329152_May_8_2024_02_04_58/original_patch" for plugin home "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0"
+
+Registering service "commands" with register file "/u01/app/oracle/middleware/sysman/metadata/commands/CScommand.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_commands_2024-07-10_14-18-47PM.log
+
+
+Registering service "commands" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/commands/commands.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_commands_2024-07-10_14-18-59PM.log
+
+
+Registering service "commands" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/commands/commands.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_commands_2024-07-10_14-19-04PM.log
+
+
+Registering service "omsPropertyDef" with register file "/u01/app/oracle/middleware/sysman/metadata/omsProperties/definition/OMSPropDefinition.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_omsPropertyDef_2024-07-10_14-19-08PM.log
+
+
+Registering service "omsPropertyDef" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/omsProperties/definition/DBPropDefinition.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_omsPropertyDef_2024-07-10_14-19-15PM.log
+
+
+Registering service "omsPropertyDef" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/omsProperties/definition/EngSysPackFeatureFlags.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_omsPropertyDef_2024-07-10_14-19-20PM.log
+
+
+Registering service "targetType" with register file "/u01/app/oracle/middleware/sysman/metadata/targetType/oldVersions/host/13.5.0.v/13.5.0.3/host.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_targetType_2024-07-10_14-19-24PM.log
+
+
+Registering service "targetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/33567462/network_hw/oracle_si_netswitch.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_targetType_2024-07-10_14-20-39PM.log
+
+
+Registering service "targetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/32971629/oracle_oaam.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_targetType_2024-07-10_14-23-33PM.log
+
+
+Registering service "targetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/32835412/oracle_database.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_targetType_2024-07-10_14-24-15PM.log
+
+
+Registering service "targetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/34241599/oracle_exadata.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_targetType_2024-07-10_14-38-08PM.log
+
+
+Registering service "chargeback" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/chargeback/database.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_chargeback_2024-07-10_14-38-41PM.log
+
+
+Registering service "chargeback" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/chargeback/exadata.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_chargeback_2024-07-10_14-38-46PM.log
+
+
+Registering service "default_collection" with register file "/u01/app/oracle/middleware/sysman/metadata/default_collection/oldVersions/oracle_emd/13.5.0.v/13.5.0.1/oracle_emd.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_default_collection_2024-07-10_14-38-50PM.log
+
+
+Registering service "default_collection" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/default_collection/33567462/network_hw/oracle_si_netswitch.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_default_collection_2024-07-10_14-39-25PM.log
+
+
+Registering service "default_collection" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/default_collection/32971629/oracle_oaam.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_default_collection_2024-07-10_14-41-24PM.log
+
+
+Registering service "default_collection" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/default_collection/32835412/oracle_database.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_default_collection_2024-07-10_14-41-43PM.log
+
+
+Registering service "default_collection" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/default_collection/34241599/oracle_exadata.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_default_collection_2024-07-10_14-44-46PM.log
+
+
+Registering service "assoc" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/assoc/j2ee_application_allowed_pairs.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_assoc_2024-07-10_14-45-05PM.log
+
+
+Registering service "assoc" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/assoc/allowed_pairs.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_assoc_2024-07-10_14-45-10PM.log
+
+
+Registering service "assoc" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/assoc/dbmachine_allowed_pairs.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_assoc_2024-07-10_14-45-14PM.log
+
+
+Registering service "jobTypes" with register file "/u01/app/oracle/middleware/sysman/metadata/jobTypes/addonsdk/SQLScript.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_jobTypes_2024-07-10_14-45-19PM.log
+
+
+Registering service "jobTypes" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/jobTypes/internalsdk/FusionMiddlewareProcessControl.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_jobTypes_2024-07-10_14-45-29PM.log
+
+
+Registering service "jobTypes" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/jobTypes/Backup.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_jobTypes_2024-07-10_14-45-35PM.log
+
+
+Registering service "jobTypes" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/jobTypes/ExaWHAutoPurgeSettings.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_jobTypes_2024-07-10_14-45-45PM.log
+
+
+Registering service "systemStencil" with register file "/u01/app/oracle/middleware/sysman/metadata/systemStencil/oldVersions/oracle_emrep/13.5.0.v/13.5.0.2/emSystemStencil.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_systemStencil_2024-07-10_14-45-50PM.log
+
+
+Registering service "systemStencil" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/systemStencil/32835412/rac_database.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_systemStencil_2024-07-10_14-45-55PM.log
+
+
+Registering service "systemStencil" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/systemStencil/34241599/oracle_cloud_vm_cluster.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_systemStencil_2024-07-10_14-46-07PM.log
+
+
+Registering service "procedures" with register file "/u01/app/oracle/middleware/sysman/metadata/procedures/linuxpatch/RegisterHostToULN.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_procedures_2024-07-10_14-46-14PM.log
+
+
+Registering service "procedures" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.cfw.oms.plugin_13.5.1.0.0/metadata/procedures/CfwHostProvisioningDP.xml" for plugin id as "oracle.sysman.cfw"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_procedures_2024-07-10_14-46-19PM.log
+
+
+Registering service "procedures" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/procedures/fmwprov/ProvisionMiddleware.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_procedures_2024-07-10_14-46-23PM.log
+
+
+Registering service "procedures" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/procedures/provprereqs.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_procedures_2024-07-10_14-46-29PM.log
+
+
+Registering service "procedures" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/procedures/Convert12cto13cDatabaseMachine.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_procedures_2024-07-10_14-46-41PM.log
+
+
+Registering service "discovery" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/metadata/discovery/plugin_discovery.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_discovery_2024-07-10_14-46-47PM.log
+
+
+Registering service "discovery" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/discovery/db_discovery.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_discovery_2024-07-10_14-46-52PM.log
+
+
+Registering service "discovery" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/discovery/plugin_discovery.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_discovery_2024-07-10_14-46-57PM.log
+
+
+Registering service "EcmMetadataOnlyRegistration" with register file "/u01/app/oracle/middleware/sysman/metadata/snapshot/host_ecm_metadata.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-01PM.log
+
+
+Registering service "EcmMetadataOnlyRegistration" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/metadata/snapshot/network_hw/arista/oracle_si_switch_arista_ssh_ecmdef.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-08PM.log
+
+
+Registering service "EcmMetadataOnlyRegistration" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/snapshot/j2eeapp_ecm_meta.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-32PM.log
+
+
+Registering service "EcmMetadataOnlyRegistration" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/snapshot/db_cdb_pdb_services_ecm_metadata.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-38PM.log
+
+
+Registering service "EcmMetadataOnlyRegistration" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/snapshot/oracle_cloud_auto_vm_cluster_ecm.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-45PM.log
+
+
+Registering service "swlib" with register file "/u01/app/oracle/middleware/sysman/metadata/swlib/patch" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_swlib_2024-07-10_14-47-51PM.log
+
+
+Registering service "swlib" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/swlib/fmwprov" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_swlib_2024-07-10_14-47-59PM.log
+
+
+Registering service "swlib" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/swlib/dbconfig" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_swlib_2024-07-10_14-48-05PM.log
+
+
+Registering service "swlib" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/swlib/analytics" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_swlib_2024-07-10_14-48-17PM.log
+
+
+Registering service "OracleCertifiedTemplate" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/monitoringTemplate/oracleCertified/DisableDBShardCollectionsTemplate.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_OracleCertifiedTemplate_2024-07-10_14-48-22PM.log
+
+
+Registering service "namedQuery" with register file "/u01/app/oracle/middleware/sysman/metadata/namedQuery/core-jobs-xs07QueryAgentNotReady.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_namedQuery_2024-07-10_14-48-28PM.log
+
+
+Registering service "namedQuery" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/namedQuery/emdb-fleetbackup-administration.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_namedQuery_2024-07-10_14-48-33PM.log
+
+
+Registering service "namedQuery" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/namedQuery/analytics_exadata_named_query.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_namedQuery_2024-07-10_14-48-38PM.log
+
+
+Registering service "TargetPrivilege" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/security/TargetPrivilege/dbschema_target_privileges.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_TargetPrivilege_2024-07-10_14-48-44PM.log
+
+
+Registering service "CredStoreMetadata" with register file "/u01/app/oracle/middleware/sysman/metadata/security/CredstoreMetadata/jsonWebKeysCredstore.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_CredStoreMetadata_2024-07-10_14-48-53PM.log
+
+
+Registering service "CredStoreMetadata" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/security/CredstoreMetadata/FPPRestCredentials.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_CredStoreMetadata_2024-07-10_14-48-57PM.log
+
+
+Registering service "CredStoreMetadata" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/security/CredstoreMetadata/ExadataWarehouseStripe.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_CredStoreMetadata_2024-07-10_14-49-02PM.log
+
+
+Registering service "storeTargetType" with register file "/u01/app/oracle/middleware/sysman/metadata/targetType/oldVersions/host/13.5.0.v/13.5.0.3/host.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_storeTargetType_2024-07-10_14-49-07PM.log
+
+
+Registering service "storeTargetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/33567462/network_hw/oracle_si_netswitch.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_storeTargetType_2024-07-10_14-49-14PM.log
+
+
+Registering service "storeTargetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/32971629/oracle_oaam.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_storeTargetType_2024-07-10_14-49-31PM.log
+
+
+Registering service "storeTargetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/32835412/oracle_database.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_storeTargetType_2024-07-10_14-49-38PM.log
+
+
+Registering service "storeTargetType" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/patched_metadata/13.5.1.0.0/targetType/34241599/oracle_exadata.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_storeTargetType_2024-07-10_14-49-53PM.log
+
+
+Registering service "gccompliance" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/gccompliance/stig.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_gccompliance_2024-07-10_14-49-59PM.log
+
+
+Registering service "compression" with register file "/u01/app/oracle/middleware/sysman/metadata/events/compression/all_target_aur.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_compression_2024-07-10_14-55-12PM.log
+
+
+Registering service "compression" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/metadata/events/compression/ap_incident_compression.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_compression_2024-07-10_14-55-17PM.log
+
+
+Registering service "compression" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/events/compression/wls_availability.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_compression_2024-07-10_14-55-22PM.log
+
+
+Registering service "compression" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/events/compression/clusterware_down.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_compression_2024-07-10_14-55-27PM.log
+
+
+Registering service "compression" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/events/compression/incident_compression.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_compression_2024-07-10_14-55-32PM.log
+
+
+Registering service "eventSpecificCustmzn" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/events/custmzn/metric_alert_oracle_end_user_service.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_eventSpecificCustmzn_2024-07-10_14-55-37PM.log
+
+
+Registering service "report" with register file "/u01/app/oracle/middleware/sysman/metadata/reports/CE_Uploading_Significant_Data.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_report_2024-07-10_14-55-41PM.log
+
+
+Registering service "namedsql" with register file "/u01/app/oracle/middleware/sysman/metadata/namedsql/Compliance_supp_viol_reason_sql.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_namedsql_2024-07-10_14-55-46PM.log
+
+
+Registering service "runbooks" with register file "/u01/app/oracle/middleware/sysman/metadata/runbooks/core-jobs-jobRunbooks.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_runbooks_2024-07-10_14-55-50PM.log
+
+
+Registering service "SecurityClassManager" with register file "/u01/app/oracle/middleware/sysman/metadata/security/SecurityClass/dashboard_security_class.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_SecurityClassManager_2024-07-10_14-55-55PM.log
+
+
+Registering service "derivedAssocs" with register file "/u01/app/oracle/middleware/sysman/metadata/derivedAssocs/emSystemAssocRules.xml" for plugin id as "core"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_derivedAssocs_2024-07-10_14-56-01PM.log
+
+
+Registering service "derivedAssocs" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.si.oms.plugin_13.5.1.0.0/metadata/derivedAssocs/storage/local_filesystems_assoc_rules.xml" for plugin id as "oracle.sysman.si"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_derivedAssocs_2024-07-10_14-56-07PM.log
+
+
+Registering service "derivedAssocs" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.emas.oms.plugin_13.5.1.0.0/metadata/derivedAssocs/emSystemAssocRules.xml" for plugin id as "oracle.sysman.emas"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_derivedAssocs_2024-07-10_14-56-13PM.log
+
+
+Registering service "derivedAssocs" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.db.oms.plugin_13.5.1.0.0/metadata/derivedAssocs/dg_assoc_rules.xml" for plugin id as "oracle.sysman.db"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_derivedAssocs_2024-07-10_14-56-18PM.log
+
+
+Registering service "derivedAssocs" with register file "/u01/app/oracle/middleware/plugins/oracle.sysman.xa.oms.plugin_13.5.1.0.0/metadata/derivedAssocs/oracle_cloud_auto_vm_cluster_assoc_rules.xml" for plugin id as "oracle.sysman.xa"...
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-11-57PM_SystemPatch_36335368_21/emctl_register_derivedAssocs_2024-07-10_14-56-27PM.log
+
+The job_queue_processes parameter is set to 0 in the repository database. Resetting the job_queue_processes parameter to default value 50 in the repository database to start the OMS. If 50 is not your default value for the job_queue_processes parameter, you should reset it to the preferred value post OMS patching.
+DB user 'sys' is allowed to perform endOP patching operation.
+Starting the oms
+Please monitor log file: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-57-02PM_SystemPatch_36335368_108/start_oms_2024-07-10_14-57-02PM.log
+
+
+Complete Summary
+================
+
+
+All log file names referenced below can be accessed from the directory "/u01/app/oracle/middleware/cfgtoollogs/omspatcher/2024-07-10_14-57-02PM_SystemPatch_36335368_108"
+
+Patching summary:
+-----------------
+
+Binaries of the following sub-patch(es) have been applied successfully:
+
+                        Featureset                                             Sub-patches                                                                                  Log file
+                        ----------                                             -----------                                                                                  --------
+  oracle.sysman.top.oms_13.5.0.0.0   36329009,36329020,36329033,36329152,36329196,36329231   36329009,36329020,36329033,36329152,36329196,36329231_opatch2024-07-10_13-57-39PM_1.log
+
+
+The following sub-patches are incompatible with components installed in the OMS system:
+35582217,34430509,34706773,36329066,35854914,36161799,36329046,36329161,36329220
+
+Deployment summary:
+-------------------
+
+The following artifact(s) have been successfully deployed:
+
+                        Artifacts                                                               Log file
+                        ---------                                                               --------
+                              SQL                rcu_applypatch_original_patch_2024-07-10_14-12-09PM.log
+                              SQL                rcu_applypatch_original_patch_2024-07-10_14-15-59PM.log
+                              SQL                rcu_applypatch_original_patch_2024-07-10_14-16-24PM.log
+                              SQL                rcu_applypatch_original_patch_2024-07-10_14-16-51PM.log
+                              SQL                rcu_applypatch_original_patch_2024-07-10_14-17-24PM.log
+                              SQL                rcu_applypatch_original_patch_2024-07-10_14-18-14PM.log
+                     MRS-commands                      emctl_register_commands_2024-07-10_14-18-47PM.log
+                     MRS-commands                      emctl_register_commands_2024-07-10_14-18-59PM.log
+                     MRS-commands                      emctl_register_commands_2024-07-10_14-19-04PM.log
+               MRS-omsPropertyDef                emctl_register_omsPropertyDef_2024-07-10_14-19-08PM.log
+               MRS-omsPropertyDef                emctl_register_omsPropertyDef_2024-07-10_14-19-15PM.log
+               MRS-omsPropertyDef                emctl_register_omsPropertyDef_2024-07-10_14-19-20PM.log
+                   MRS-targetType                    emctl_register_targetType_2024-07-10_14-19-24PM.log
+                   MRS-targetType                    emctl_register_targetType_2024-07-10_14-20-39PM.log
+                   MRS-targetType                    emctl_register_targetType_2024-07-10_14-23-33PM.log
+                   MRS-targetType                    emctl_register_targetType_2024-07-10_14-24-15PM.log
+                   MRS-targetType                    emctl_register_targetType_2024-07-10_14-38-08PM.log
+                   MRS-chargeback                    emctl_register_chargeback_2024-07-10_14-38-41PM.log
+                   MRS-chargeback                    emctl_register_chargeback_2024-07-10_14-38-46PM.log
+           MRS-default_collection            emctl_register_default_collection_2024-07-10_14-38-50PM.log
+           MRS-default_collection            emctl_register_default_collection_2024-07-10_14-39-25PM.log
+           MRS-default_collection            emctl_register_default_collection_2024-07-10_14-41-24PM.log
+           MRS-default_collection            emctl_register_default_collection_2024-07-10_14-41-43PM.log
+           MRS-default_collection            emctl_register_default_collection_2024-07-10_14-44-46PM.log
+                        MRS-assoc                         emctl_register_assoc_2024-07-10_14-45-05PM.log
+                        MRS-assoc                         emctl_register_assoc_2024-07-10_14-45-10PM.log
+                        MRS-assoc                         emctl_register_assoc_2024-07-10_14-45-14PM.log
+                     MRS-jobTypes                      emctl_register_jobTypes_2024-07-10_14-45-19PM.log
+                     MRS-jobTypes                      emctl_register_jobTypes_2024-07-10_14-45-29PM.log
+                     MRS-jobTypes                      emctl_register_jobTypes_2024-07-10_14-45-35PM.log
+                     MRS-jobTypes                      emctl_register_jobTypes_2024-07-10_14-45-45PM.log
+                MRS-systemStencil                 emctl_register_systemStencil_2024-07-10_14-45-50PM.log
+                MRS-systemStencil                 emctl_register_systemStencil_2024-07-10_14-45-55PM.log
+                MRS-systemStencil                 emctl_register_systemStencil_2024-07-10_14-46-07PM.log
+                   MRS-procedures                    emctl_register_procedures_2024-07-10_14-46-14PM.log
+                   MRS-procedures                    emctl_register_procedures_2024-07-10_14-46-19PM.log
+                   MRS-procedures                    emctl_register_procedures_2024-07-10_14-46-23PM.log
+                   MRS-procedures                    emctl_register_procedures_2024-07-10_14-46-29PM.log
+                   MRS-procedures                    emctl_register_procedures_2024-07-10_14-46-41PM.log
+                    MRS-discovery                     emctl_register_discovery_2024-07-10_14-46-47PM.log
+                    MRS-discovery                     emctl_register_discovery_2024-07-10_14-46-52PM.log
+                    MRS-discovery                     emctl_register_discovery_2024-07-10_14-46-57PM.log
+  MRS-EcmMetadataOnlyRegistration   emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-01PM.log
+  MRS-EcmMetadataOnlyRegistration   emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-08PM.log
+  MRS-EcmMetadataOnlyRegistration   emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-32PM.log
+  MRS-EcmMetadataOnlyRegistration   emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-38PM.log
+  MRS-EcmMetadataOnlyRegistration   emctl_register_EcmMetadataOnlyRegistration_2024-07-10_14-47-45PM.log
+                        MRS-swlib                         emctl_register_swlib_2024-07-10_14-47-51PM.log
+                        MRS-swlib                         emctl_register_swlib_2024-07-10_14-47-59PM.log
+                        MRS-swlib                         emctl_register_swlib_2024-07-10_14-48-05PM.log
+                        MRS-swlib                         emctl_register_swlib_2024-07-10_14-48-17PM.log
+      MRS-OracleCertifiedTemplate       emctl_register_OracleCertifiedTemplate_2024-07-10_14-48-22PM.log
+                   MRS-namedQuery                    emctl_register_namedQuery_2024-07-10_14-48-28PM.log
+                   MRS-namedQuery                    emctl_register_namedQuery_2024-07-10_14-48-33PM.log
+                   MRS-namedQuery                    emctl_register_namedQuery_2024-07-10_14-48-38PM.log
+              MRS-TargetPrivilege               emctl_register_TargetPrivilege_2024-07-10_14-48-44PM.log
+            MRS-CredStoreMetadata             emctl_register_CredStoreMetadata_2024-07-10_14-48-53PM.log
+            MRS-CredStoreMetadata             emctl_register_CredStoreMetadata_2024-07-10_14-48-57PM.log
+            MRS-CredStoreMetadata             emctl_register_CredStoreMetadata_2024-07-10_14-49-02PM.log
+              MRS-storeTargetType               emctl_register_storeTargetType_2024-07-10_14-49-07PM.log
+              MRS-storeTargetType               emctl_register_storeTargetType_2024-07-10_14-49-14PM.log
+              MRS-storeTargetType               emctl_register_storeTargetType_2024-07-10_14-49-31PM.log
+              MRS-storeTargetType               emctl_register_storeTargetType_2024-07-10_14-49-38PM.log
+              MRS-storeTargetType               emctl_register_storeTargetType_2024-07-10_14-49-53PM.log
+                 MRS-gccompliance                  emctl_register_gccompliance_2024-07-10_14-49-59PM.log
+                  MRS-compression                   emctl_register_compression_2024-07-10_14-55-12PM.log
+                  MRS-compression                   emctl_register_compression_2024-07-10_14-55-17PM.log
+                  MRS-compression                   emctl_register_compression_2024-07-10_14-55-22PM.log
+                  MRS-compression                   emctl_register_compression_2024-07-10_14-55-27PM.log
+                  MRS-compression                   emctl_register_compression_2024-07-10_14-55-32PM.log
+         MRS-eventSpecificCustmzn          emctl_register_eventSpecificCustmzn_2024-07-10_14-55-37PM.log
+                       MRS-report                        emctl_register_report_2024-07-10_14-55-41PM.log
+                     MRS-namedsql                      emctl_register_namedsql_2024-07-10_14-55-46PM.log
+                     MRS-runbooks                      emctl_register_runbooks_2024-07-10_14-55-50PM.log
+         MRS-SecurityClassManager          emctl_register_SecurityClassManager_2024-07-10_14-55-55PM.log
+                MRS-derivedAssocs                 emctl_register_derivedAssocs_2024-07-10_14-56-01PM.log
+                MRS-derivedAssocs                 emctl_register_derivedAssocs_2024-07-10_14-56-07PM.log
+                MRS-derivedAssocs                 emctl_register_derivedAssocs_2024-07-10_14-56-13PM.log
+                MRS-derivedAssocs                 emctl_register_derivedAssocs_2024-07-10_14-56-18PM.log
+                MRS-derivedAssocs                 emctl_register_derivedAssocs_2024-07-10_14-56-27PM.log
+
+
+Log file location: /u01/app/oracle/middleware/cfgtoollogs/omspatcher/36335368/omspatcher_2024-07-10_13-57-20PM_apply.log
+
+OMSPatcher succeeded.
+[oracle@oemserver02 OMSPatcher]$ 
