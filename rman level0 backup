@@ -1,0 +1,69 @@
+#!/bin/bash
+set +x
+DBNAME=${1} # DB Name
+PRG=`basename $0`
+USAGE="Usage: ${PRG} <database name> "
+if [ -z "${DBNAME}" ]; then
+echo "${USAGE}"
+exit 1
+fi
+#----------------------------------------------
+#
+oraenvfile=`ls -ltr ~/ORA_* |egrep -i $DBNAME |awk '{print $9}'`
+if [ -f "$oraenvfile" ]
+then
+. $oraenvfile
+else
+echo "/home/oracle/ORA_$DBNAME.env file not found"
+fi
+#-----------------------------------------------
+BOX=`uname -a | awk '{print$2}'`
+MAILX='/bin/mailx'
+MAIL_LIST='arahman@neoleap.com.sa,dbadmins@neoleap.com.sa'
+export NLS_DATE_FORMAT='dd-mon-yyyy hh24:mi:ss'
+date
+export DATE=`date +%Y%m%d_%H%M%S`
+LOGFILE=/opt/oracle/LOGS/${DBNAME}_RMANLVL0_${DATE}.log
+#----------------------------------------------
+LOCKFILE=/tmp/$PRG.lock
+if [ -f $LOCKFILE ]; then
+echo "lock file exists, exiting..."
+exit 1
+else
+echo "DO NOT REMOVE, $LOCKFILE" > $LOCKFILE
+fi
+#----------------------------------------------
+rman nocatalog log=$LOGFILE <<EOF
+connect target /
+set echo on;
+show all;
+crosscheck archivelog all;
+configure controlfile autobackup on;
+RUN
+{
+  BACKUP INCREMENTAL LEVEL=0
+  FORMAT '%d_D_%T_%u_s%s_p%p'
+  DATABASE PLUS ARCHIVELOG tag=RMAN_lvl0_incr_backup;
+  BACKUP CURRENT CONTROLFILE
+  FORMAT '%d_C_%T_%u.ctl'
+  SPFILE
+  FORMAT '%d_S_%T_%u.spfile';
+  ALTER SYSTEM ARCHIVE LOG CURRENT;
+  DELETE noprompt ARCHIVELOG UNTIL TIME 'SYSDATE - 4';
+}
+EOF
+#----------------------------------------------
+if [ $? -ne 0 ]; then
+ERROR=`cat $LOGFILE |egrep -i "RMAN-|ORA-|Failed"`
+echo "RMAN problem..."
+echo -e "Failed with below errors check attached log for more info \n \n $ERROR" | $MAILX -s "RMAN backup level 0 job failed for: $ORACLE_SID on $BOX" -a $LOGFILE $MAIL_LIST
+else
+echo "RMAN level 0 backup completed successfully for $DBNAME on $DATE..."
+fi
+#----------------------------------------------
+if [ -f $LOCKFILE ]; then
+rm $LOCKFILE
+fi
+#----------------------------------------------
+date
+exit 0
