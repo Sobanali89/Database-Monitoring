@@ -1,2 +1,16 @@
-select 'ALTER SYSTEM KILL SESSION ' || ''''||b.sid||',' ||b.serial# || ',@'||b.inst_id||''''||' IMMEDIATE;' from gv$process a, gv$session b where a.addr=b.paddr and client_info like 'rman%';
-
+SELECT
+    'ALTER SYSTEM KILL SESSION '
+    || ''''
+    || b.sid
+    || ','
+    || b.serial#
+    || ',@'
+    || b.inst_id
+    || ''''
+    || ' IMMEDIATE;'
+FROM
+    gv$process a,
+    gv$session b
+WHERE
+        a.addr = b.paddr
+    AND client_info LIKE 'rman%';
