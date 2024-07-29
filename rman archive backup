@@ -1,0 +1,71 @@
+## Generic Arcivelog backup
+## run with databaes name 
+## sh /opt/oracle/SCRIPTS/RMAN/RMAN_BKPLVL0_Script_V1.sh xpncprdcdb2
+## Create a envfile in /home/oracle
+## ORA_dbname.env
+## Cron job
+## ## Backups
+##0 1 * * 5  /opt/oracle/SCRIPTS/RMAN/RMAN_BKPLVL0_Script_V1.sh xpncprdcdb  >> /opt/oracle/cronlogs/`hostname`_RMAN_BKPLVL0_Script_V1.sh.log 2>&1
+##0 2,10,18 * * * /opt/oracle/SCRIPTS/RMAN/RMAN_ArchBkp_Script_V2_Compressed.sh xpncprdcdb >> /opt/oracle/cronlogs/`hostname`_RMAN_ArchBkp_Script_V1.log 2>&1
+
+#!/bin/bash
+set +x
+DBNAME=${1} # DB Name
+PRG=`basename $0`
+USAGE="Usage: ${PRG} <database name> "
+if [ -z "${DBNAME}" ]; then
+echo "${USAGE}"
+exit 1
+fi
+#----------------------------------------------
+#
+oraenvfile=`ls -ltr ~/ORA_* |egrep -i $DBNAME |awk '{print $9}'`
+if [ -f "$oraenvfile" ]
+then
+. $oraenvfile
+else
+echo "/home/oracle/ORA_$DBNAME.env file not found"
+fi
+#-----------------------------------------------
+BOX=`uname -a | awk '{print$2}'`
+MAILX='/bin/mailx'
+MAIL_LIST='dbadmins@neoleap.com.sa'
+export NLS_DATE_FORMAT='dd-mon-yyyy hh24:mi:ss'
+date
+export DATE=`date +%Y%m%d_%H%M%S`
+LOGFILE=/opt/oracle/LOGS/${DBNAME}_ArchBkp_${DATE}.log
+#----------------------------------------------
+LOCKFILE=/tmp/$PRG.lock
+if [ -f $LOCKFILE ]; then
+echo "lock file exists, exiting..."
+exit 1
+else
+echo "DO NOT REMOVE, $LOCKFILE" > $LOCKFILE
+fi
+#----------------------------------------------
+rman nocatalog log=$LOGFILE <<EOF
+connect target /
+set echo on;
+show all;
+crosscheck archivelog all;
+configure controlfile autobackup on;
+Run
+{
+backup check logical as compressed backupset (archivelog all delete all input);
+}
+EOF
+#----------------------------------------------
+if [ $? -ne 0 ]; then
+ERROR=`cat $LOGFILE |egrep -i "RMAN-|ORA-|Fail"`
+echo "RMAN problem..."
+echo -e "Failed with below errors check attached log for more info \n \n $ERROR" | $MAILX -s "RMAN backup Arch job failed for: $ORACLE_SID on $BOX" -a $LOGFILE $MAIL_LIST
+else
+echo "RMAN Arch backup completed successfully for $DBNAME on $DATE..."
+fi
+#----------------------------------------------
+if [ -f $LOCKFILE ]; then
+rm $LOCKFILE
+fi
+#----------------------------------------------
+date
+exit 0
